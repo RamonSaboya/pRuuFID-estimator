@@ -18,6 +18,12 @@ gnuplot
 sudo apt-get install gnuplot
 ```
 
+### Running on Ubuntu
+
+```
+sh plot.sh
+```
+
 ## Authors
 
 * **Douglas Soares** - [dslcin](https://github.com/dslcin)
