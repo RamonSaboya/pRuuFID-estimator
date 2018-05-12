@@ -78,6 +78,8 @@ int main(int argc, char* argv[]) {
 	g.cmd("set origin 0.55,0.025");
 	g.cmd(plot_string(6));
 	g.cmd("unset multiplot");
+	
+	usleep(100000);
 
 	system("eog --disable-gallery --single-window graph.png &");
 }
