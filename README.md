@@ -18,10 +18,16 @@ gnuplot
 sudo apt-get install gnuplot
 ```
 
-### Running on Ubuntu
+### Compiling
 
 ```
-sh plot.sh
+g++ -o estimator -std=c++11 plot.cpp estimators.cpp
+```
+
+### Running
+
+```
+./estimator
 ```
 
 ## Authors
