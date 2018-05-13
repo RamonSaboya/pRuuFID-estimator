@@ -66,7 +66,7 @@ void Estimator::write_dat_file(EstimationResult result) const {
 		
 		int total_slots = empty_slots + success_slots + collision_slots;
 		
-		int error = abs(tags - final_frames);
+		int error = result.abs_errors[i];
 
 		datFile << setw(W) << tags << setw(W) << error << setw(W) << total_slots << setw(W) << simulation_times << setw(W) << empty_slots << setw(W) << collision_slots << endl;
 	}
@@ -108,15 +108,12 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 					sucess++;
 				}else if (slots[index] > 1){
 					collision ++;
-				}else{
+				}else if (slots[index] == 0){ 
 					total_empty ++;
 				}
 			}
 
-			abs_error += 0;
-			if(current_size > tags_left){
-				abs_error += abs(current_size - tags_left);
-			}
+			abs_error += abs(tags_left - current_size);
 
 			tags_left -= sucess;
 
@@ -129,7 +126,7 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 			current_size = 2 * collision;
 			slots = new int[current_size];
 
-			memset(slots, 0, current_size*sizeof(int));	
+			memset(slots, 0, current_size * sizeof(int));	
 		}
 
 		result.tags_amounts[i] = (parameters.starting_tags + (parameters.increase_value * i)); 
@@ -141,7 +138,6 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 		result.abs_errors[i] = (abs_error/total_frames);
 
 		tags_left = parameters.starting_tags + (parameters.increase_value * (i+1));
-		
 		total_sucess = 0;
 		total_collision = 0;
 		total_empty = 0;
