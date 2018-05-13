@@ -73,15 +73,64 @@ void Estimator::write_dat_file(EstimationResult result) const {
 
 LowerBound::LowerBound() : Estimator("lower-bound", "lower_bound.dat", "w lp lw 2 pt 4 ps 2 t 'Lower Bound'") {}
 void LowerBound::simulate(const EstimationParameters &parameters) const {
-	EstimationResult result(10);
+	int n = (parameters.max_tags/parameters.increase_value) + 1
 
-	for(int i = 0; i < 10; ++i) {
-		result.tags_amounts[i] = 100 * (i + 1);
-		result.final_frames[i] = result.tags_amounts[i] + rand() % 140;
-		result.empty_slots[i] = rand() % 1100;
-		result.collision_slots[i] = rand() % 1800;
-		result.success_slots[i] = rand() % (3500 - (result.collision_slots[i] + result.empty_slots[i]));
-		result.simulation_times[i] = 10 * (rand() / (RAND_MAX + 1.0));
+	EstimationResult result(n);
+
+	//inicializando random
+	srand((unsigned int) time(NULL));
+
+	int tags_left = parameters.starting_tags;
+	
+	int[] slots = new int[parameters.initial_frame];
+	int total_sucess = 0;
+	int total_empty = 0;
+	int total_collision = 0;
+	int total_simulation = 0;
+
+	for (int i = 0; i < n; i++){
+
+		while(tags_left != 0){
+			sucess = 0;
+			collision = 0;
+
+			for (tag = 0; tag < tags_left; tag++){
+				random = rand() % (tags_left + 1);
+				slots[random] ++;
+			}
+
+			for (index = 0; slot < sizeof(slots); index ++){
+				if (slots[index] == 1){
+					sucess++;
+				}else if (slots[index] > 1){
+					collision ++;
+				}else{
+					total_empty ++;
+				}
+			}
+			
+			tags_left -= sucess;
+
+			total_sucess += sucess;
+			total_collision += collision;
+			total_simulation ++;
+			num_slots = 2 * collision;
+			slots = new int[num_slots];			
+		}
+
+		result.tags_amounts[i] = (parameters.starting_value + (parameters.increase_value * i)); //lower bound
+		result.final_frames[i] = result.tags_amounts[i] + rand() % 140; //arrumar
+		result.empty_slots[i] = total_empty;
+		result.collision_slots[i] = total_collision;
+		result.success_slots[i] = total_sucess; //nao tem sentido
+		result.simulation_times[i] = total_simulation;
+
+		tags_left = tags_amounts[i];
+		
+		total_sucess = 0;
+		total_collision = 0;
+		total_empty = 0;
+		total_simulation = 0;
 	}
 
 	write_dat_file(result);
