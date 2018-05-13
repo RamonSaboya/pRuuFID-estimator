@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <fstream>
 #include <math.h>
+#include <string.h>
 
 const int W = 15;
 
@@ -26,6 +27,7 @@ EstimationResult::EstimationResult(int tags_amount) {
 	this->success_slots = new int[tags_amount];
 	this->collision_slots = new int[tags_amount];
 	this->simulation_times = new double[tags_amount];
+	this->abs_errors = new double[tags_amount];
 }
 
 Estimator::Estimator(string name, string file_name, string plot_options) {
@@ -80,27 +82,28 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 
 	int tags_left = parameters.starting_tags;
 
-	int size = parameters.initial_frame;
-	int* slots = new int[size];
-
+	int initial_size = parameters.initial_frame;
+	int current_size = initial_size;
+	int* slots = new int[initial_size];
+	
 	int total_sucess = 0;
 	int total_empty = 0;
 	int total_collision = 0;
 	int total_simulation = 0;
 	int total_frames = 1;
+	int abs_error = 0;
 
 	for (int i = 0; i < n; i++){
-
-		while(tags_left != 0){
+		while(tags_left > 0){
 			int sucess = 0;
 			int collision = 0;
 
 			for (int tag = 0; tag < tags_left; tag++){
-				int random = rand() % tags_left;
-				slots[random] ++;
+				int random = rand() % current_size;
+				slots[random] ++;	
 			}
 
-			for (int index = 0; index < sizeof(slots); index ++){
+			for (int index = 0; index < current_size; index ++){
 				if (slots[index] == 1){
 					sucess++;
 				}else if (slots[index] > 1){
@@ -108,6 +111,11 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 				}else{
 					total_empty ++;
 				}
+			}
+
+			abs_error += 0;
+			if(current_size > tags_left){
+				abs_error += abs(current_size - tags_left);
 			}
 
 			tags_left -= sucess;
@@ -118,8 +126,10 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 			total_frames ++;
 			
 			//lower bound - frame size
-			int num_slots = 2 * collision;
-			slots = new int[num_slots];		
+			current_size = 2 * collision;
+			slots = new int[current_size];
+
+			memset(slots, 0, current_size*sizeof(int));	
 		}
 
 		result.tags_amounts[i] = (parameters.starting_tags + (parameters.increase_value * i)); 
@@ -128,14 +138,18 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 		result.collision_slots[i] = total_collision;
 		result.success_slots[i] = total_sucess;
 		result.simulation_times[i] = total_simulation;
+		result.abs_errors[i] = (abs_error/total_frames);
 
-		tags_left = result.tags_amounts[i];
+		tags_left = parameters.starting_tags + (parameters.increase_value * (i+1));
 		
 		total_sucess = 0;
 		total_collision = 0;
 		total_empty = 0;
 		total_simulation = 0;
 		total_frames = 1;
+		abs_error = 0;
+		slots = new int[initial_size];
+		current_size = initial_size;
 	}
 
 	write_dat_file(result);
@@ -149,14 +163,16 @@ void EomLee::simulate(const EstimationParameters &parameters) const {
 
 	int tags_left = parameters.starting_tags;
 
-	int size = parameters.initial_frame;
-	int* slots = new int[size];
+	int initial_size = parameters.initial_frame;
+	int current_size = initial_size;
+	int* slots = new int[initial_size];
 
 	int total_sucess = 0;
 	int total_empty = 0;
 	int total_collision = 0;
 	int total_simulation = 0;
 	int total_frames = 1;
+	int abs_error = 0;
 
 	for (int i = 0; i < n; i++){
 
@@ -166,11 +182,11 @@ void EomLee::simulate(const EstimationParameters &parameters) const {
 			int empty = 0;
 
 			for (int tag = 0; tag < tags_left; tag++){
-				int random = rand() % tags_left;
+				int random = rand() % current_size;
 				slots[random] ++;
 			}
 
-			for (int index = 0; index < sizeof(slots); index ++){
+			for (int index = 0; index < current_size; index ++){
 				if (slots[index] == 1){
 					sucess++;
 				}else if (slots[index] > 1){
@@ -178,6 +194,11 @@ void EomLee::simulate(const EstimationParameters &parameters) const {
 				}else{
 					empty ++;
 				}
+			}
+
+			abs_error += 0;
+			if(current_size > tags_left){
+				abs_error += abs(current_size - tags_left);
 			}
 
 			tags_left -= sucess;
@@ -189,26 +210,25 @@ void EomLee::simulate(const EstimationParameters &parameters) const {
 			total_frames ++;
 			
 			//eom lee - frame size
-			int num_slots = 0;
 
-			int L = sucess + collision + empty;
-			float yk = 2;
-
-			float threshold = 0.001;
-
+			int L = sucess + collision + empty;			
+			double yk = 2;
+			double threshold = 0.001;
+			int i = 1;
 			while(true){
-				float last_yk = yk;
-				float bk = L/(last_yk * collision * sucess);
-				float e = exp(-1 / bk);
+				double last_yk = yk;
+				double bk = L/(last_yk * collision * sucess);
+				double e = exp(-1 / bk);
             			yk = (1 - e) / (bk * (1 - (1 + 1 / bk) * e));
 
             			if (abs(last_yk - yk) < threshold) {
-					num_slots = ceil(yk * collision);
+					current_size = ceil(yk * collision);
 					break;
 				}
 			}
 
-			slots = new int[num_slots];		
+			slots = new int[current_size];	
+			memset(slots, 0, current_size*sizeof(int));	
 		}
 
 		result.tags_amounts[i] = (parameters.starting_tags + (parameters.increase_value * i)); 
@@ -217,14 +237,18 @@ void EomLee::simulate(const EstimationParameters &parameters) const {
 		result.collision_slots[i] = total_collision;
 		result.success_slots[i] = total_sucess;
 		result.simulation_times[i] = total_simulation;
+		result.abs_errors[i] = (abs_error/total_frames);
 
-		tags_left = result.tags_amounts[i];
+		tags_left = parameters.starting_tags + (parameters.increase_value * (i+1));
 		
 		total_sucess = 0;
 		total_collision = 0;
 		total_empty = 0;
 		total_simulation = 0;
 		total_frames = 1;
+		abs_error = 0;
+		slots = new int[initial_size];
+		current_size = initial_size;
 	}
 
 	write_dat_file(result);

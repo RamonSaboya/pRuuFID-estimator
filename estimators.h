@@ -19,6 +19,7 @@ struct EstimationResult {
 	int *success_slots;
 	int *collision_slots;
 	double *simulation_times;
+	double *abs_errors;
 	EstimationResult(int tags_amount);
 };
 
