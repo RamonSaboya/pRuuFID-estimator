@@ -13,12 +13,13 @@ struct EstimationParameters {
 
 struct EstimationResult {
 	int tags_amount;
+	int *tags_amounts;
+	int *final_frames;
 	int *empty_slots;
 	int *success_slots;
 	int *collision_slots;
 	double *simulation_times;
 	EstimationResult(int tags_amount);
-	~EstimationResult();
 };
 
 class Estimator {
@@ -29,6 +30,7 @@ class Estimator {
 	public:
 		Estimator(string name, string file_name, string plot_options);
 		virtual void simulate(const EstimationParameters &parameters) const = 0;
+		void write_dat_file(EstimationResult result) const;
 		
 		string get_name() const;
 		string get_file_name() const;

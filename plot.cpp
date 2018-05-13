@@ -40,6 +40,10 @@ int main(int argc, char* argv[]) {
 
 	srand(time(NULL));
 
+	for(Estimator* estimator : whitelisted) {
+		estimator->simulate(parameters);
+	}
+
 	g.cmd("set terminal pngcairo size 1700,900");
 	g.cmd("set output 'graph.png'");
 	g.cmd("set multiplot");
@@ -50,8 +54,8 @@ int main(int argc, char* argv[]) {
 	g.cmd("set mxtics 1");
 	g.cmd("set xr [100:1000]");
 	g.cmd("set yr [0:*]");
-	g.cmd("set xlabel 'Número de Etiquetas'");
-	g.cmd("set ylabel 'Erro Abs. Médio de Estimação'");
+	g.cmd("set xlabel 'Número de Etiquetas' font 'Helvetica,20'");
+	g.cmd("set ylabel 'Erro Abs. Médio de Estimação' font 'Helvetica,20'");
 	g.cmd("set origin 0.0,0.55");
 	plot_graph(2);
 	g.cmd("set ylabel 'Número de Slots'");
