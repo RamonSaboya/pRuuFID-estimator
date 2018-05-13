@@ -20,13 +20,12 @@ set<Estimator*> whitelisted;
 
 EstimationParameters parameters;
 
-bool handle_parameters(int argc, char* argv[]);
-
-string plot_string(int idx);
-
-bool validate_parameters();
+Gnuplot g;
 
 set<Estimator*> get_estimators();
+bool handle_parameters(int argc, char* argv[]);
+bool validate_parameters();
+void plot_graph(int idx);
 
 int main(int argc, char* argv[]) {
 	whitelisted = get_estimators();
@@ -41,7 +40,6 @@ int main(int argc, char* argv[]) {
 
 	srand(time(NULL));
 
-	Gnuplot g;
 	g.cmd("set terminal pngcairo size 1700,900");
 	g.cmd("set output 'graph.png'");
 	g.cmd("set multiplot");
@@ -51,37 +49,47 @@ int main(int argc, char* argv[]) {
 	g.cmd("set mytics 1");
 	g.cmd("set mxtics 1");
 	g.cmd("set xr [100:1000]");
-	g.cmd("set ytics 20");
-	g.cmd("set yr [0:140]");
+	g.cmd("set yr [0:*]");
 	g.cmd("set xlabel 'Número de Etiquetas'");
 	g.cmd("set ylabel 'Erro Abs. Médio de Estimação'");
 	g.cmd("set origin 0.0,0.55");
-	g.cmd(plot_string(2));
-	g.cmd("set ytics 500");
-	g.cmd("set yr [0:3500]");
+	plot_graph(2);
 	g.cmd("set ylabel 'Número de Slots'");
 	g.cmd("set origin 0.35,0.55");
-	g.cmd(plot_string(3));
-	g.cmd("set ytics 1");
-	g.cmd("set yr [0:10]");
+	plot_graph(3);
 	g.cmd("set ylabel 'Tempo para Identificação (s)'");
 	g.cmd("set origin 0.7,0.55");
-	g.cmd(plot_string(4));
-	g.cmd("set ytics 100");
-	g.cmd("set yr [0:1100]");
+	plot_graph(4);
 	g.cmd("set ylabel 'Número de Slots Vazios'");
 	g.cmd("set origin 0.15,0.025");
-	g.cmd(plot_string(5));
-	g.cmd("set ytics 200");
-	g.cmd("set yr [0:1800]");
-	g.cmd("set ylabel 'Número de Slots em colisão'");
+	plot_graph(5);
+	g.cmd("set ylabel 'Número de Slots em Colisão'");
 	g.cmd("set origin 0.55,0.025");
-	g.cmd(plot_string(6));
+	plot_graph(6);
 	g.cmd("unset multiplot");
 	
 	usleep(100000);
 
 	system("eog --disable-gallery --single-window graph.png &");
+}
+
+void plot_graph(int idx) {
+	string plot = "plot ";
+	
+	for(Estimator* estimator : whitelisted) {
+		plot += "'" + estimator->get_file_name() + "' u 1:" + to_string(idx) + " " + estimator->get_plot_options() + ", ";
+	}
+	
+	g.cmd(plot.substr(0, plot.size() - 1));
+}
+
+set<Estimator*> get_estimators() {
+	set<Estimator*> estimators;
+
+	estimators.insert(new LowerBound());
+	estimators.insert(new EomLee());
+	
+	return estimators;
 }
 
 bool handle_parameters(int argc, char* argv[]) {
@@ -144,17 +152,6 @@ bool handle_parameters(int argc, char* argv[]) {
 	return true;
 }
 
-
-string plot_string(int idx) {
-	string plot = "plot ";
-	
-	for(Estimator* estimator : whitelisted) {
-		plot += "'" + estimator->get_file_name() + "' u 1:" + to_string(idx) + " " + estimator->get_plot_options() + ", ";
-	}
-	
-	return plot.substr(0, plot.size() - 1);
-}
-
 bool validate_parameters() {
 	if((max_tags - starting_tags) % increase_values != 0) {
 		cerr << "Invalid tags amount" << endl;
@@ -166,13 +163,4 @@ bool validate_parameters() {
 	parameters = local_parameters;
 
 	return true;
-}
-
-set<Estimator*> get_estimators() {
-	set<Estimator*> estimators;
-
-	estimators.insert(new LowerBound());
-	estimators.insert(new EomLee());
-	
-	return estimators;
 }

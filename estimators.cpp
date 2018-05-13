@@ -47,13 +47,13 @@ string Estimator::get_plot_options() const {
 }
 
 LowerBound::LowerBound() : Estimator("lower-bound", "lower_bound.dat", "w lp lw 2 pt 4 ps 2 t 'Lower Bound'") {}
-void LowerBound::estimate(const EstimationParameters &parameters) const {
+void LowerBound::simulate(const EstimationParameters &parameters) const {
 	EstimationResult result(10);
 	ofstream datFile(this->get_file_name());
 	datFile << "# test" << endl;
 }
 
 EomLee::EomLee() : Estimator("eom-lee", "eom_lee.dat", "w lp lw 2 pt 6 ps 2 t 'Eom Lee'") {}
-void EomLee::estimate(const EstimationParameters &parameters) const {
+void EomLee::simulate(const EstimationParameters &parameters) const {
 	EstimationResult result(10);
 }

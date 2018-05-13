@@ -28,7 +28,7 @@ class Estimator {
 		string plot_options;
 	public:
 		Estimator(string name, string file_name, string plot_options);
-		virtual void estimate(const EstimationParameters &parameters) const = 0;
+		virtual void simulate(const EstimationParameters &parameters) const = 0;
 		
 		string get_name() const;
 		string get_file_name() const;
@@ -38,11 +38,11 @@ class Estimator {
 class LowerBound : public Estimator {
 	public:
 		LowerBound();
-		void estimate(const EstimationParameters &parameters) const;
+		void simulate(const EstimationParameters &parameters) const;
 };
 
 class EomLee : public Estimator {
 	public:
 		EomLee();
-		void estimate(const EstimationParameters &parameters) const;
+		void simulate(const EstimationParameters &parameters) const;
 };
