@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <math.h>
 
 const int W = 15;
 
@@ -73,33 +74,33 @@ void Estimator::write_dat_file(EstimationResult result) const {
 
 LowerBound::LowerBound() : Estimator("lower-bound", "lower_bound.dat", "w lp lw 2 pt 4 ps 2 t 'Lower Bound'") {}
 void LowerBound::simulate(const EstimationParameters &parameters) const {
-	int n = (parameters.max_tags/parameters.increase_value) + 1
+	int n = (parameters.max_tags/parameters.increase_value) + 1;
 
 	EstimationResult result(n);
 
-	//inicializando random
-	srand((unsigned int) time(NULL));
-
 	int tags_left = parameters.starting_tags;
-	
-	int[] slots = new int[parameters.initial_frame];
+
+	int size = parameters.initial_frame;
+	int* slots = new int[size];
+
 	int total_sucess = 0;
 	int total_empty = 0;
 	int total_collision = 0;
 	int total_simulation = 0;
+	int total_frames = 1;
 
 	for (int i = 0; i < n; i++){
 
 		while(tags_left != 0){
-			sucess = 0;
-			collision = 0;
+			int sucess = 0;
+			int collision = 0;
 
-			for (tag = 0; tag < tags_left; tag++){
-				random = rand() % (tags_left + 1);
+			for (int tag = 0; tag < tags_left; tag++){
+				int random = rand() % tags_left;
 				slots[random] ++;
 			}
 
-			for (index = 0; slot < sizeof(slots); index ++){
+			for (int index = 0; index < sizeof(slots); index ++){
 				if (slots[index] == 1){
 					sucess++;
 				}else if (slots[index] > 1){
@@ -108,29 +109,33 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 					total_empty ++;
 				}
 			}
-			
+
 			tags_left -= sucess;
 
 			total_sucess += sucess;
 			total_collision += collision;
 			total_simulation ++;
-			num_slots = 2 * collision;
-			slots = new int[num_slots];			
+			total_frames ++;
+			
+			//lower bound - frame size
+			int num_slots = 2 * collision;
+			slots = new int[num_slots];		
 		}
 
-		result.tags_amounts[i] = (parameters.starting_value + (parameters.increase_value * i)); //lower bound
-		result.final_frames[i] = result.tags_amounts[i] + rand() % 140; //arrumar
+		result.tags_amounts[i] = (parameters.starting_tags + (parameters.increase_value * i)); 
+		result.final_frames[i] = total_frames;
 		result.empty_slots[i] = total_empty;
 		result.collision_slots[i] = total_collision;
-		result.success_slots[i] = total_sucess; //nao tem sentido
+		result.success_slots[i] = total_sucess;
 		result.simulation_times[i] = total_simulation;
 
-		tags_left = tags_amounts[i];
+		tags_left = result.tags_amounts[i];
 		
 		total_sucess = 0;
 		total_collision = 0;
 		total_empty = 0;
 		total_simulation = 0;
+		total_frames = 1;
 	}
 
 	write_dat_file(result);
@@ -138,15 +143,88 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 
 EomLee::EomLee() : Estimator("eom-lee", "eom_lee.dat", "w lp lw 2 pt 6 ps 2 t 'Eom Lee'") {}
 void EomLee::simulate(const EstimationParameters &parameters) const {
-	EstimationResult result(10);
+	int n = (parameters.max_tags/parameters.increase_value) + 1;
 
-	for(int i = 0; i < 10; ++i) {
-		result.tags_amounts[i] = 100 * (i + 1);
-		result.final_frames[i] = result.tags_amounts[i] + rand() % 140;
-		result.empty_slots[i] = rand() % 1100;
-		result.collision_slots[i] = rand() % 1800;
-		result.success_slots[i] = rand() % (3500 - (result.collision_slots[i] + result.empty_slots[i]));
-		result.simulation_times[i] = 10 * (rand() / (RAND_MAX + 1.0));
+	EstimationResult result(n);
+
+	int tags_left = parameters.starting_tags;
+
+	int size = parameters.initial_frame;
+	int* slots = new int[size];
+
+	int total_sucess = 0;
+	int total_empty = 0;
+	int total_collision = 0;
+	int total_simulation = 0;
+	int total_frames = 1;
+
+	for (int i = 0; i < n; i++){
+
+		while(tags_left != 0){
+			int sucess = 0;
+			int collision = 0;
+			int empty = 0;
+
+			for (int tag = 0; tag < tags_left; tag++){
+				int random = rand() % tags_left;
+				slots[random] ++;
+			}
+
+			for (int index = 0; index < sizeof(slots); index ++){
+				if (slots[index] == 1){
+					sucess++;
+				}else if (slots[index] > 1){
+					collision ++;
+				}else{
+					empty ++;
+				}
+			}
+
+			tags_left -= sucess;
+
+			total_sucess += sucess;
+			total_collision += collision;
+			total_empty += empty;
+			total_simulation ++;
+			total_frames ++;
+			
+			//eom lee - frame size
+			int num_slots = 0;
+
+			int L = sucess + collision + empty;
+			float yk = 2;
+
+			float threshold = 0.001;
+
+			while(true){
+				float last_yk = yk;
+				float bk = L/(last_yk * collision * sucess);
+				float e = exp(-1 / bk);
+            			yk = (1 - e) / (bk * (1 - (1 + 1 / bk) * e));
+
+            			if (abs(last_yk - yk) < threshold) {
+					num_slots = ceil(yk * collision);
+					break;
+				}
+			}
+
+			slots = new int[num_slots];		
+		}
+
+		result.tags_amounts[i] = (parameters.starting_tags + (parameters.increase_value * i)); 
+		result.final_frames[i] = total_frames;
+		result.empty_slots[i] = total_empty;
+		result.collision_slots[i] = total_collision;
+		result.success_slots[i] = total_sucess;
+		result.simulation_times[i] = total_simulation;
+
+		tags_left = result.tags_amounts[i];
+		
+		total_sucess = 0;
+		total_collision = 0;
+		total_empty = 0;
+		total_simulation = 0;
+		total_frames = 1;
 	}
 
 	write_dat_file(result);
