@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
 	g.cmd("set grid xtics ytics mxtics mytics ls 10 dt 3");
 	g.cmd("set mytics 1");
 	g.cmd("set mxtics 1");
-	g.cmd("set xr [100:1000]");
+	g.cmd("set xr [*:*]");
 	g.cmd("set yr [0:*]");
 	g.cmd("set xlabel 'Número de Etiquetas' font 'Helvetica,20'");
 	g.cmd("set ylabel 'Erro Abs. Médio de Estimação' font 'Helvetica,20'");
