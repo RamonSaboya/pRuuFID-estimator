@@ -94,6 +94,7 @@ void LowerBound::simulate(const EstimationParameters &parameters) const {
 	int abs_error = 0;
 
 	for (int i = 0; i < n; i++){
+		
 		while(tags_left > 0){
 			int sucess = 0;
 			int collision = 0;
@@ -172,7 +173,7 @@ void EomLee::simulate(const EstimationParameters &parameters) const {
 
 	for (int i = 0; i < n; i++){
 
-		while(tags_left != 0){
+		while(tags_left > 0){
 			int sucess = 0;
 			int collision = 0;
 			int empty = 0;
@@ -192,11 +193,8 @@ void EomLee::simulate(const EstimationParameters &parameters) const {
 				}
 			}
 
-			abs_error += 0;
-			if(current_size > tags_left){
-				abs_error += abs(current_size - tags_left);
-			}
-
+			abs_error += abs(current_size - tags_left);
+		
 			tags_left -= sucess;
 
 			total_sucess += sucess;
@@ -206,21 +204,24 @@ void EomLee::simulate(const EstimationParameters &parameters) const {
 			total_frames ++;
 			
 			//eom lee - frame size
-
 			int L = sucess + collision + empty;			
 			double yk = 2;
 			double threshold = 0.001;
-			int i = 1;
+			double last_yk = 0;
+			double bk = 0;
+			double e = 0;
+			//primeiro caso: bk = infinito / yk = 2
 			while(true){
-				double last_yk = yk;
-				double bk = L/(last_yk * collision * sucess);
-				double e = exp(-1 / bk);
-            			yk = (1 - e) / (bk * (1 - (1 + 1 / bk) * e));
-
             			if (abs(last_yk - yk) < threshold) {
 					current_size = ceil(yk * collision);
 					break;
 				}
+
+				last_yk = yk;
+
+				bk = L/((last_yk * collision) + sucess);
+				e = exp(-1 / bk);
+            			yk = (1 - e) / (bk * (1 - (1 + (1 / bk)) * e));
 			}
 
 			slots = new int[current_size];	
