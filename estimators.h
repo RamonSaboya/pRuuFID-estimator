@@ -36,6 +36,7 @@ class Estimator {
 		void simulate(const EstimationParameters &parameters) const;
 		void write_dat_file(EstimationResult result) const;
 		
+		int calculate(int idle, int success, int collision) const;
 		virtual int calculate_frame_size(int idle, int success, int collision) const = 0;
 		
 		string get_name() const;

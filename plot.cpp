@@ -51,8 +51,6 @@ int main(int argc, char* argv[]) {
 	end_time = high_resolution_clock::now();
 	
 	cout << "Execution time in ms: " << duration_cast<milliseconds>(end_time - start_time).count() << endl;
-	
-	usleep(100000);
 
 	g.cmd("set terminal pngcairo size 1700,900");
 	g.cmd("set output 'graph.png'");
@@ -83,7 +81,7 @@ int main(int argc, char* argv[]) {
 	plot_graph(6);
 	g.cmd("unset multiplot");
 	
-	usleep(100000);
+	usleep(1000000);
 
 	system("eog --disable-gallery --single-window graph.png &");
 }

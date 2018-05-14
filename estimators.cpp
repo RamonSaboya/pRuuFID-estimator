@@ -95,8 +95,8 @@ void Estimator::simulate(const EstimationParameters &parameters) const {
 
 	EstimationResult result(n, parameters.simulations);
 
-	int tag_count, silenced_tags, simulations, frame_count, frame_size;
-	int error, slot, idle, success, collision;
+	int tag_count, simulations, frame_count, frame_size;
+	int error, slot, success, collision;
 	int *frame; // Holds -1 for collision, 0 when empty or 1 otherwise
 	high_resolution_clock::time_point start_time, end_time;
 
@@ -116,8 +116,6 @@ void Estimator::simulate(const EstimationParameters &parameters) const {
 				frame_count++;
 				
 				frame = new int[frame_size]();
-
-				silenced_tags = 0;
 				
 				success = 0;
 				collision = 0;
@@ -125,14 +123,10 @@ void Estimator::simulate(const EstimationParameters &parameters) const {
 					slot = fast_rand() % frame_size;
 				
 					if(frame[slot] == 0) { // Empty slot
-						++silenced_tags;
-						
 						frame[slot] = 1;
 
 						++success;
 					} else if(frame[slot] == 1) { // First collison
-						--silenced_tags;
-						
 						frame[slot] = -1;
 					
 						--success;
@@ -144,11 +138,9 @@ void Estimator::simulate(const EstimationParameters &parameters) const {
 				result.success_slots[idx] += success;
 				result.collision_slots[idx] += collision;
 			
-				frame_size = this->calculate_frame_size(idle, success, collision);
+				frame_size = calculate_frame_size(frame_size - (success + collision), success, collision);
 				
-				this->get_name();
-				
-				tag_count -= silenced_tags;
+				tag_count -= success;
 				
 				error += abs(tag_count - frame_size);
 			}
@@ -166,17 +158,17 @@ void Estimator::simulate(const EstimationParameters &parameters) const {
 	write_dat_file(result);
 }
 
-LowerBound::LowerBound() : Estimator("lower-bound", "lower_bound.dat", "w lp lw 2 pt 1 ps 2 t 'Lower Bound'") {}
+LowerBound::LowerBound() : Estimator("lower-bound", "lower_bound.dat", "w lp lw 2 pt 1 ps 2 lt -1 t 'Lower Bound'") {}
 int LowerBound::calculate_frame_size(int idle, int success, int collision) const {
 	return 2 * collision;
 }
 
-Schoute::Schoute() : Estimator("schoute", "schoute.dat", "w lp lw 2 pt 6 dt '-' ps 2 t 'Schoute'") {}
+Schoute::Schoute() : Estimator("schoute", "schoute.dat", "w lp lw 2 pt 6 dt '-' ps 2 lt -1 t 'Schoute'") {}
 int Schoute::calculate_frame_size(int idle, int success, int collision) const {
 	return ceil(2.39 * collision);
 }
 
-EomLee::EomLee() : Estimator("eom-lee", "eom_lee.dat", "w lp lw 2 pt 4 dt '_' ps 2 t 'Eom Lee'") {}
+EomLee::EomLee() : Estimator("eom-lee", "eom_lee.dat", "w lp lw 2 pt 4 dt '_' ps 2 lt -1 t 'Eom Lee'") {}
 int EomLee::calculate_frame_size(int idle, int success, int collision) const {
 	int l = idle + success + collision;
 
@@ -195,5 +187,5 @@ int EomLee::calculate_frame_size(int idle, int success, int collision) const {
 		prev_yk = yk;
 	}	
 
-	return floor(yk * collision);
+	return ceil(yk * collision);
 }
