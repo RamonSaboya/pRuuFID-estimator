@@ -7,20 +7,23 @@ struct EstimationParameters {
 	int max_tags;
 	int simulations;
 	int initial_frame;
+
 	EstimationParameters();
 	EstimationParameters(int starting_tags, int increase_value, int max_tags, int simulations, int initial_frame);
 };
 
 struct EstimationResult {
-	int tags_amount;
-	int *tags_amounts;
-	int *final_frames;
+	int tag_count;
+	int simulations;
+
+	int *tag_amounts;
+	int *errors;
 	int *empty_slots;
 	int *success_slots;
 	int *collision_slots;
-	double *simulation_times;
-	double *abs_errors;
-	EstimationResult(int tags_amount);
+	int *simulation_times;
+
+	EstimationResult(int tag_count, int simulations);
 };
 
 class Estimator {
@@ -30,8 +33,10 @@ class Estimator {
 		string plot_options;
 	public:
 		Estimator(string name, string file_name, string plot_options);
-		virtual void simulate(const EstimationParameters &parameters) const = 0;
+		void simulate(const EstimationParameters &parameters) const;
 		void write_dat_file(EstimationResult result) const;
+		
+		virtual int calculate_frame_size(int idle, int success, int collision) const = 0;
 		
 		string get_name() const;
 		string get_file_name() const;
@@ -41,11 +46,17 @@ class Estimator {
 class LowerBound : public Estimator {
 	public:
 		LowerBound();
-		void simulate(const EstimationParameters &parameters) const;
+		int calculate_frame_size(int idle, int success, int collision) const;
+};
+
+class Schoute : public Estimator {
+	public:
+		Schoute();
+		int calculate_frame_size(int idle, int success, int collision) const;
 };
 
 class EomLee : public Estimator {
 	public:
 		EomLee();
-		void simulate(const EstimationParameters &parameters) const;
+		int calculate_frame_size(int idle, int success, int collision) const;
 };

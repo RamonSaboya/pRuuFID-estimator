@@ -1,8 +1,11 @@
 #include <bits/stdc++.h>
 #include "estimators.h"
+#include "math_util.h"
 #include "gnuplot.h"
+#include <chrono>
 
 using namespace std;
+using namespace std::chrono;
 
 const int STARTING_TAGS = 100;
 const int INCREASE_VALUE = 100;
@@ -37,16 +40,22 @@ int main(int argc, char* argv[]) {
 	if(!validate_parameters()) {
 		return -1;
 	}
+	
+	sfast_rand();
 
-	srand(time(NULL));
-
+	high_resolution_clock::time_point start_time, end_time;
+	start_time = high_resolution_clock::now();
 	for(Estimator* estimator : whitelisted) {
 		estimator->simulate(parameters);
 	}
+	end_time = high_resolution_clock::now();
+	
+	cout << "Execution time in ms: " << duration_cast<milliseconds>(end_time - start_time).count() << endl;
 
 	g.cmd("set terminal pngcairo size 1700,900");
 	g.cmd("set output 'graph.png'");
 	g.cmd("set multiplot");
+	g.cmd("set key left top");
 	g.cmd("set size 0.3,0.45");
 	g.cmd("set style line 10 lc rgb 'black' lt 1 lw 1");
 	g.cmd("set grid xtics ytics mxtics mytics ls 10 dt 3");
@@ -91,6 +100,7 @@ set<Estimator*> get_estimators() {
 	set<Estimator*> estimators;
 
 	estimators.insert(new LowerBound());
+	estimators.insert(new Schoute());
 	estimators.insert(new EomLee());
 	
 	return estimators;
@@ -132,6 +142,8 @@ bool handle_parameters(int argc, char* argv[]) {
 					
 						if(value == "lower-bound") {
 							whitelisted.insert(new LowerBound());
+						} else if(value == "schoute") {
+							whitelisted.insert(new Schoute());
 						} else if(value == "eom-lee") {
 							whitelisted.insert(new EomLee());
 						} else {

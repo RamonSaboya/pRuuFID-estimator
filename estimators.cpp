@@ -1,4 +1,5 @@
 #include "estimators.h"
+#include "math_util.h"
 #include <stdlib.h>
 #include <set>
 #include <iostream>
@@ -6,8 +7,14 @@
 #include <fstream>
 #include <math.h>
 #include <string.h>
+#include <chrono>
+
+using namespace std;
+using namespace std::chrono;
 
 const int W = 15;
+
+const double THRESHOLD = 0.001;
 
 EstimationParameters::EstimationParameters() {}
 
@@ -19,15 +26,16 @@ EstimationParameters::EstimationParameters(int starting_tags, int increase_value
 	this->initial_frame = initial_frame;
 }
 
-EstimationResult::EstimationResult(int tags_amount) {
-	this->tags_amount = tags_amount;
-	this->tags_amounts = new int[tags_amount];
-	this->final_frames = new int[tags_amount];
-	this->empty_slots = new int[tags_amount];
-	this->success_slots = new int[tags_amount];
-	this->collision_slots = new int[tags_amount];
-	this->simulation_times = new double[tags_amount];
-	this->abs_errors = new double[tags_amount];
+EstimationResult::EstimationResult(int tag_count, int simulations) {
+	this->tag_count = tag_count;
+	this->simulations = simulations;
+
+	this->tag_amounts = new int[tag_count]();
+	this->errors = new int[tag_count]();
+	this->empty_slots = new int[tag_count]();
+	this->success_slots = new int[tag_count]();
+	this->collision_slots = new int[tag_count]();
+	this->simulation_times = new int[tag_count]();
 }
 
 Estimator::Estimator(string name, string file_name, string plot_options) {
@@ -51,202 +59,141 @@ string Estimator::get_plot_options() const {
 void Estimator::write_dat_file(EstimationResult result) const {
 	ofstream datFile(this->get_file_name());
 
-	datFile << "# " << this->get_name() << endl;
+	datFile << "# " << setw(3 * W - 2) << this->get_name() << endl;
+	datFile << "#" << endl;
+	datFile << "#" << endl;
 	datFile << "# " << setw(W - 2) << "tags" << setw(W) << "error" << setw(W) << "slots" << setw(W) << "time" << setw(W) << "empty" << setw(W) << "collision" << endl;
 	datFile << "#" << endl;
 	
-	for(int i = 0; i < result.tags_amount; ++i) {
-		int tags = result.tags_amounts[i];
-		int final_frames = result.final_frames[i];
+	double simulations = result.simulations;
+	
+	for(int i = 0; i < result.tag_count; ++i) {
+		int tags = result.tag_amounts[i];
+		double errors = result.errors[i] / simulations;
+		double empty = result.empty_slots[i] / simulations;
+		double success = result.success_slots[i] / simulations;
+		double collision = result.collision_slots[i] / simulations;
+		double simulation_times = result.simulation_times[i] / 1e6;
 		
-		int empty_slots = result.empty_slots[i];
-		int success_slots = result.success_slots[i];
-		int collision_slots = result.collision_slots[i];
-		double simulation_times = result.simulation_times[i];
-		
-		int total_slots = empty_slots + success_slots + collision_slots;
-		
-		int error = result.abs_errors[i];
+		double total_slots = empty + success + collision;
 
-		datFile << setw(W) << tags << setw(W) << error << setw(W) << total_slots << setw(W) << simulation_times << setw(W) << empty_slots << setw(W) << collision_slots << endl;
+		datFile << setw(W) << fixed << tags;
+		datFile << setw(W) << fixed << errors;
+		datFile << setw(W) << fixed << total_slots;
+		datFile << setw(W) << fixed << simulation_times;
+		datFile << setw(W) << fixed << empty;
+		datFile << setw(W) << fixed << collision;
+		datFile << endl;
 	}
 
 	datFile.close();
 }
 
-LowerBound::LowerBound() : Estimator("lower-bound", "lower_bound.dat", "w lp lw 2 pt 4 ps 2 t 'Lower Bound'") {}
-void LowerBound::simulate(const EstimationParameters &parameters) const {
-	int n = (parameters.max_tags/parameters.increase_value) + 1;
+void Estimator::simulate(const EstimationParameters &parameters) const {
+	// Amount of tag counts
+	int n = ((parameters.max_tags - parameters.starting_tags) / parameters.increase_value) + 1;
 
-	EstimationResult result(n);
+	EstimationResult result(n, parameters.simulations);
 
-	int tags_left = parameters.starting_tags;
+	int tag_count, silenced_tags, simulations, frame_count, frame_size;
+	int error, slot, idle, success, collision;
+	int *frame; // Holds -1 for collision, 0 when empty or 1 otherwise
+	high_resolution_clock::time_point start_time, end_time;
 
-	int initial_size = parameters.initial_frame;
-	int current_size = initial_size;
-	int* slots = new int[initial_size];
-	
-	int total_sucess = 0;
-	int total_empty = 0;
-	int total_collision = 0;
-	int total_simulation = 0;
-	int total_frames = 1;
-	int abs_error = 0;
-
-	for (int i = 0; i < n; i++){
+	for(int idx = 0; idx < n; ++idx) {
+		tag_count = parameters.starting_tags + (parameters.increase_value * idx);
+		result.tag_amounts[idx] = tag_count;
 		
-		while(tags_left > 0){
-			int sucess = 0;
-			int collision = 0;
+		start_time = high_resolution_clock::now();
+		
+		simulations = parameters.simulations;
+		while(simulations--) {
+			frame_count = 0;
+			frame_size = parameters.initial_frame;
+			error = 0;
+	
+			while(frame_size > 0 && tag_count > 0) {
+				frame_count++;
+				
+				frame = new int[frame_size]();
 
-			for (int tag = 0; tag < tags_left; tag++){
-				int random = rand() % current_size;
-				slots[random] ++;	
-			}
+				silenced_tags = 0;
+				
+				success = 0;
+				collision = 0;
+				for(int i = 0; i < tag_count; ++i) {
+					slot = fast_rand() % frame_size;
+				
+					if(frame[slot] == -1) { // Collision slot, ignore
 
-			for (int index = 0; index < current_size; index ++){
-				if (slots[index] == 1){
-					sucess++;
-				}else if (slots[index] > 1){
-					collision ++;
-				}else if (slots[index] == 0){ 
-					total_empty ++;
+					} else if(frame[slot] == 0) { // Empty slot
+						++silenced_tags;
+						
+						frame[slot] = 1;
+
+						++success;
+					} else { // First collison
+						--silenced_tags;
+						
+						frame[slot] = -1;
+					
+						--success;
+						++collision;
+					}
 				}
-			}
-
-			abs_error += abs(tags_left - current_size);
-
-			tags_left -= sucess;
-
-			total_sucess += sucess;
-			total_collision += collision;
-			total_simulation ++;
-			total_frames ++;
 			
-			//lower bound - frame size
-			current_size = 2 * collision;
-			slots = new int[current_size];
-
-			memset(slots, 0, current_size * sizeof(int));	
+				result.empty_slots[idx] += frame_size - (success + collision);
+				result.success_slots[idx] += success;
+				result.collision_slots[idx] += collision;
+			
+				frame_size = this->calculate_frame_size(idle, success, collision);
+				
+				tag_count -= silenced_tags;
+				
+				error += abs(tag_count - frame_size);
+			}
+				
+			result.errors[idx] += error / frame_count;
+		
+			tag_count = parameters.starting_tags + (parameters.increase_value * idx);
 		}
-
-		result.tags_amounts[i] = (parameters.starting_tags + (parameters.increase_value * i)); 
-		result.final_frames[i] = total_frames;
-		result.empty_slots[i] = total_empty;
-		result.collision_slots[i] = total_collision;
-		result.success_slots[i] = total_sucess;
-		result.simulation_times[i] = total_simulation;
-		result.abs_errors[i] = (abs_error/total_frames);
-
-		tags_left = parameters.starting_tags + (parameters.increase_value * (i+1));
-		total_sucess = 0;
-		total_collision = 0;
-		total_empty = 0;
-		total_simulation = 0;
-		total_frames = 1;
-		abs_error = 0;
-		slots = new int[initial_size];
-		current_size = initial_size;
+		
+		end_time = high_resolution_clock::now();
+	
+		result.simulation_times[idx] = duration_cast<microseconds>(end_time - start_time).count();
 	}
 
 	write_dat_file(result);
 }
 
-EomLee::EomLee() : Estimator("eom-lee", "eom_lee.dat", "w lp lw 2 pt 6 ps 2 t 'Eom Lee'") {}
-void EomLee::simulate(const EstimationParameters &parameters) const {
-	int n = (parameters.max_tags/parameters.increase_value) + 1;
+LowerBound::LowerBound() : Estimator("lower-bound", "lower_bound.dat", "w lp lw 2 pt 1 ps 2 t 'Lower Bound'") {}
+int LowerBound::calculate_frame_size(int idle, int success, int collision) const {
+	return 2 * collision;
+}
 
-	EstimationResult result(n);
+Schoute::Schoute() : Estimator("schoute", "schoute.dat", "w lp lw 2 pt 6 dt '-' ps 2 t 'Schoute'") {}
+int Schoute::calculate_frame_size(int idle, int success, int collision) const {
+	return ceil(2.39 * collision);
+}
 
-	int tags_left = parameters.starting_tags;
+EomLee::EomLee() : Estimator("eom-lee", "eom_lee.dat", "w lp lw 2 pt 4 dt '_' ps 2 t 'Eom Lee'") {}
+int EomLee::calculate_frame_size(int idle, int success, int collision) const {
+	int l = idle + success + collision;
 
-	int initial_size = parameters.initial_frame;
-	int current_size = initial_size;
-	int* slots = new int[initial_size];
+	double yk = 2, prev_yk = 2;
+	double bk, bk_exp;
 
-	int total_sucess = 0;
-	int total_empty = 0;
-	int total_collision = 0;
-	int total_simulation = 0;
-	int total_frames = 1;
-	int abs_error = 0;
-
-	for (int i = 0; i < n; i++){
-
-		while(tags_left > 0){
-			int sucess = 0;
-			int collision = 0;
-			int empty = 0;
-
-			for (int tag = 0; tag < tags_left; tag++){
-				int random = rand() % current_size;
-				slots[random] ++;
-			}
-
-			for (int index = 0; index < current_size; index ++){
-				if (slots[index] == 1){
-					sucess++;
-				}else if (slots[index] > 1){
-					collision ++;
-				}else{
-					empty ++;
-				}
-			}
-
-			abs_error += abs(current_size - tags_left);
+	while(true) {
+		bk = l / (prev_yk * collision + success);
+		bk_exp = exp(-1 / bk);
+		yk = (1 - bk_exp) / (bk * ((1 - (1 + (1 / bk)) * bk_exp)));
 		
-			tags_left -= sucess;
-
-			total_sucess += sucess;
-			total_collision += collision;
-			total_empty += empty;
-			total_simulation ++;
-			total_frames ++;
-			
-			//eom lee - frame size
-			int L = sucess + collision + empty;			
-			double yk = 2;
-			double threshold = 0.001;
-			double last_yk = 0;
-			double bk = 0;
-			double e = 0;
-			//primeiro caso: bk = infinito / yk = 2
-			while(true){
-            			if (abs(last_yk - yk) < threshold) {
-					current_size = ceil(yk * collision);
-					break;
-				}
-
-				last_yk = yk;
-
-				bk = L/((last_yk * collision) + sucess);
-				e = exp(-1 / bk);
-            			yk = (1 - e) / (bk * (1 - (1 + (1 / bk)) * e));
-			}
-
-			slots = new int[current_size];	
-			memset(slots, 0, current_size*sizeof(int));	
+		if(fabs(prev_yk - yk) < THRESHOLD) {
+			break;
 		}
-
-		result.tags_amounts[i] = (parameters.starting_tags + (parameters.increase_value * i)); 
-		result.final_frames[i] = total_frames;
-		result.empty_slots[i] = total_empty;
-		result.collision_slots[i] = total_collision;
-		result.success_slots[i] = total_sucess;
-		result.simulation_times[i] = total_simulation;
-		result.abs_errors[i] = (abs_error/total_frames);
-
-		tags_left = parameters.starting_tags + (parameters.increase_value * (i+1));
 		
-		total_sucess = 0;
-		total_collision = 0;
-		total_empty = 0;
-		total_simulation = 0;
-		total_frames = 1;
-		abs_error = 0;
-		slots = new int[initial_size];
-		current_size = initial_size;
-	}
+		prev_yk = yk;
+	}	
 
-	write_dat_file(result);
+	return ceil(yk * collision);
 }
