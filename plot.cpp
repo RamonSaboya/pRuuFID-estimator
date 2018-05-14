@@ -51,6 +51,8 @@ int main(int argc, char* argv[]) {
 	end_time = high_resolution_clock::now();
 	
 	cout << "Execution time in ms: " << duration_cast<milliseconds>(end_time - start_time).count() << endl;
+	
+	usleep(100000);
 
 	g.cmd("set terminal pngcairo size 1700,900");
 	g.cmd("set output 'graph.png'");

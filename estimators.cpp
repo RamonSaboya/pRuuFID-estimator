@@ -124,15 +124,13 @@ void Estimator::simulate(const EstimationParameters &parameters) const {
 				for(int i = 0; i < tag_count; ++i) {
 					slot = fast_rand() % frame_size;
 				
-					if(frame[slot] == -1) { // Collision slot, ignore
-
-					} else if(frame[slot] == 0) { // Empty slot
+					if(frame[slot] == 0) { // Empty slot
 						++silenced_tags;
 						
 						frame[slot] = 1;
 
 						++success;
-					} else { // First collison
+					} else if(frame[slot] == 1) { // First collison
 						--silenced_tags;
 						
 						frame[slot] = -1;
@@ -147,6 +145,8 @@ void Estimator::simulate(const EstimationParameters &parameters) const {
 				result.collision_slots[idx] += collision;
 			
 				frame_size = this->calculate_frame_size(idle, success, collision);
+				
+				this->get_name();
 				
 				tag_count -= silenced_tags;
 				
@@ -195,5 +195,5 @@ int EomLee::calculate_frame_size(int idle, int success, int collision) const {
 		prev_yk = yk;
 	}	
 
-	return ceil(yk * collision);
+	return floor(yk * collision);
 }
