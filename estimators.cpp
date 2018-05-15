@@ -1,5 +1,6 @@
 #include "estimators.h"
 #include "math_util.h"
+#include <bits/stdc++.h>
 #include <stdlib.h>
 #include <set>
 #include <iostream>
@@ -257,7 +258,7 @@ void Q::simulate(const EstimationParameters &parameters) const {
 					in_slot = 0;
 					
 					for(int i = 0; i < tag_count; ++i) {
-						if(tags[i] == -1) {
+						if(tags[i] == INT_MIN) {
 							continue;
 						}
 						
@@ -282,7 +283,7 @@ void Q::simulate(const EstimationParameters &parameters) const {
 					result.collision_slots[idx] += collision;
 					
 					if(success) {
-						tags[last_success] = -1;
+						tags[last_success] = INT_MIN;
 						++silenced;
 					}
 					
