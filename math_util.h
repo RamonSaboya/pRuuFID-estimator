@@ -4,7 +4,7 @@ using namespace std;
 
 static unsigned int g_seed;
 
-inline void sfast_rand(int seed = time(NULL)) {
+inline void sfast_rand(int seed) {
 	g_seed = seed;
 }
 

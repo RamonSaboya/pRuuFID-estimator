@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 	
-	sfast_rand();
+	sfast_rand(time(NULL));
 
 	high_resolution_clock::time_point start_time, end_time;
 	start_time = high_resolution_clock::now();
@@ -73,12 +73,17 @@ int main(int argc, char* argv[]) {
 	g.cmd("set ylabel 'Tempo para Identificação (s)'");
 	g.cmd("set origin 0.7,0.55");
 	plot_graph(4);
-	g.cmd("set ylabel 'Número de Slots Vazios'");
-	g.cmd("set origin 0.15,0.025");
+	g.cmd("set ylabel 'Eficiência'");
+	g.cmd("set origin 0.0,0.025");
+	g.cmd("set yr [*:*]");
 	plot_graph(5);
-	g.cmd("set ylabel 'Número de Slots em Colisão'");
-	g.cmd("set origin 0.55,0.025");
+	g.cmd("set ylabel 'Número de Slots Vazios'");
+	g.cmd("set origin 0.35,0.025");
+	g.cmd("set yr [0:*]");
 	plot_graph(6);
+	g.cmd("set ylabel 'Número de Slots em Colisão'");
+	g.cmd("set origin 0.7,0.025");
+	plot_graph(7);
 	g.cmd("unset multiplot");
 	
 	usleep(1000000);

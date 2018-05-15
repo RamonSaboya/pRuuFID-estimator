@@ -17,7 +17,7 @@ const int W = 15;
 const double THRESHOLD = 0.001;
 
 const int INIT_Q = 6;
-const double C = 0.25;
+const double C = 0.1;
 
 EstimationParameters::EstimationParameters() {}
 
@@ -65,7 +65,7 @@ void Estimator::write_dat_file(EstimationResult result) const {
 	datFile << "# " << setw(3 * W - 2) << this->get_name() << endl;
 	datFile << "#" << endl;
 	datFile << "#" << endl;
-	datFile << "# " << setw(W - 2) << "tags" << setw(W) << "error" << setw(W) << "slots" << setw(W) << "time" << setw(W) << "empty" << setw(W) << "collision" << endl;
+	datFile << "# " << setw(W - 2) << "tags" << setw(W) << "error" << setw(W) << "slots" << setw(W) << "time" << setw(W) << "efficiency" << setw(W) << "empty" << setw(W) << "collision" << endl;
 	datFile << "#" << endl;
 	
 	double simulations = result.simulations;
@@ -79,11 +79,14 @@ void Estimator::write_dat_file(EstimationResult result) const {
 		double simulation_times = result.simulation_times[i] / 1e6;
 		
 		double total_slots = empty + success + collision;
+		
+		double efficiency = success / total_slots;
 
 		datFile << setw(W) << fixed << tags;
 		datFile << setw(W) << fixed << errors;
 		datFile << setw(W) << fixed << total_slots;
 		datFile << setw(W) << fixed << simulation_times;
+		datFile << setw(W) << fixed << efficiency;
 		datFile << setw(W) << fixed << empty;
 		datFile << setw(W) << fixed << collision;
 		datFile << endl;
@@ -151,7 +154,7 @@ void SimpleEstimator::simulate(const EstimationParameters &parameters) const {
 				
 				error += abs(tag_count - frame_size);
 			}
-				
+			
 			result.errors[idx] += error / frame_count;
 		
 			tag_count = parameters.starting_tags + (parameters.increase_value * idx);
@@ -221,10 +224,10 @@ void Q::simulate(const EstimationParameters &parameters) const {
 	EstimationResult result(n, parameters.simulations);
 
 	int tag_count, simulations, frame_count, frame_size, next_frame_size, in_slot, last_success;
-	int error, slot, idle, success, collision;
+	int error, silenced, idle, success, collision;
 	int *tags;
 	double current_q;
-	bool size_changed, frame_collision;
+	bool all_read, size_changed, frame_collision;
 	high_resolution_clock::time_point start_time, end_time;
 
 	for(int idx = 0; idx < n; ++idx) {
@@ -237,19 +240,22 @@ void Q::simulate(const EstimationParameters &parameters) const {
 		while(simulations--) {
 			current_q = this->get_q();
 			
-			frame_count = 0;
-			frame_size = 1 << this->get_q();
+			frame_count = 1;
 			error = 0;
 			
-			while(tag_count > 0) {
-				tags = new int[tag_count]();
+			tags = new int[tag_count]();
+			silenced = 0;
 			
+			all_read = false;
+			while(!all_read) {
 				size_changed = true;
 				frame_collision = false;
-			
-				for(slot = 0; slot < frame_size; ++slot) {
-					in_slot = 0;
 				
+				frame_size = 1 << (int) round(current_q);
+				for(int slot = 0; slot < frame_size; ++slot) {
+					frame_count++;
+					in_slot = 0;
+					
 					for(int i = 0; i < tag_count; ++i) {
 						if(tags[i] == -1) {
 							continue;
@@ -267,9 +273,9 @@ void Q::simulate(const EstimationParameters &parameters) const {
 						}
 					}
 				
-					idle = in_slot == 0;
-					success = in_slot == 1;
-					collision = in_slot > 1;
+					idle = in_slot == 0 ? 1 : 0;
+					success = in_slot == 1 ? 1 : 0;
+					collision = in_slot >= 2 ? 1 : 0;
 				
 					result.empty_slots[idx] += idle;
 					result.success_slots[idx] += success;
@@ -277,14 +283,15 @@ void Q::simulate(const EstimationParameters &parameters) const {
 					
 					if(success) {
 						tags[last_success] = -1;
+						++silenced;
 					}
 					
 					if(collision) {
 						frame_collision = true;
 					}
 				
-					if(slot == tag_count - 1 && !frame_collision) {
-						tag_count = 0;
+					if(slot == frame_size - 1 && !frame_collision) {
+						all_read = true;
 					} else {
 						if(idle) {
 							current_q = max(current_q - this->get_c(), 0.0);
@@ -296,6 +303,8 @@ void Q::simulate(const EstimationParameters &parameters) const {
 						
 						if(next_frame_size != frame_size) {
 							frame_size = next_frame_size;
+						
+							error += abs((tag_count - silenced) - frame_size);
 							break;
 						} else {
 							size_changed = false;
@@ -303,13 +312,15 @@ void Q::simulate(const EstimationParameters &parameters) const {
 					}
 				}
 			}
+			
+			result.errors[idx] += error / frame_count;
+			
+			tag_count = parameters.starting_tags + (parameters.increase_value * idx);
 		}
 		
 		end_time = high_resolution_clock::now();
 	
 		result.simulation_times[idx] = duration_cast<microseconds>(end_time - start_time).count();
-		
-		cout << result.tag_amounts[idx] << endl;
 	}
 	
 	write_dat_file(result);
