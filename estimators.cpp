@@ -174,12 +174,12 @@ void SimpleEstimator::simulate(const EstimationParameters &parameters) const {
 
 ExtendedEstimator::ExtendedEstimator(string name, string file_name, string plot_options) : Estimator(name, file_name, plot_options) {}
 
-LowerBound::LowerBound() : SimpleEstimator("lower-bound", "lower_bound.dat", "w lp lw 1.25 pt 1 ps 2 lt -1 t 'Lower Bound'") {}
+LowerBound::LowerBound() : SimpleEstimator("lower-bound", "lower_bound.dat", "w lp lw 1.75 pt 1 ps 2.75 lt -1 t 'Lower Bound'") {}
 int LowerBound::calculate_frame_size(int idle, int success, int collision) const {
 	return collision << 1;
 }
 
-EomLee::EomLee() : SimpleEstimator("eom-lee", "eom_lee.dat", "w lp lw 1.25 pt 4 dt '_' ps 2 lt -1 t 'Eom Lee'") {
+EomLee::EomLee() : SimpleEstimator("eom-lee", "eom_lee.dat", "w lp lw 1.75 pt 4 dt '_' ps 2.75 lt -1 t 'Eom Lee'") {
 	this->threshold = THRESHOLD;
 }
 double EomLee::get_threshold() const {
@@ -206,12 +206,12 @@ int EomLee::calculate_frame_size(int idle, int success, int collision) const {
 	return ceil(yk * collision);
 }
 
-Schoute::Schoute() : SimpleEstimator("schoute", "schoute.dat", "w lp lw 1.25 pt 6 dt 3 ps 2 lt -1 t 'Schoute'") {}
+Schoute::Schoute() : SimpleEstimator("schoute", "schoute.dat", "w lp lw 1.75 pt 6 dt 3 ps 2.75 lt -1 t 'Schoute'") {}
 int Schoute::calculate_frame_size(int idle, int success, int collision) const {
 	return ceil(2.39 * collision);
 }
 
-Q::Q() : ExtendedEstimator("Q", "q.dat", "w lp lw 1.25 pt 8 dt '.' ps 2 lt -1 t 'Q'") {
+Q::Q() : ExtendedEstimator("Q", "q.dat", "w lp lw 1.75 pt 8 dt '.' ps 2.75 lt -1 t 'Q'") {
 	this->q = INIT_Q;
 	this->c = C;
 	this->current_q = INIT_Q;
