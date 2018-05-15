@@ -60,9 +60,11 @@ string Estimator::get_plot_options() const {
 	return plot_options;
 }
 
+// Generate data file
 void Estimator::write_dat_file(EstimationResult result) const {
 	ofstream datFile(this->get_file_name());
 
+	// Set header
 	datFile << "# " << setw(3 * W - 2) << this->get_name() << endl;
 	datFile << "#" << endl;
 	datFile << "#" << endl;
@@ -71,6 +73,7 @@ void Estimator::write_dat_file(EstimationResult result) const {
 	
 	double simulations = result.simulations;
 	
+	// Print lines corresponding to different tag counts
 	for(int i = 0; i < result.tag_count; ++i) {
 		int tags = result.tag_amounts[i];
 		double errors = result.errors[i] / simulations;
@@ -263,9 +266,9 @@ void Q::simulate(const EstimationParameters &parameters) const {
 						}
 						
 						if(size_changed) {
-							tags[i] = fast_rand() % frame_size;
+							tags[i] = fast_rand() % frame_size; // Query Adjust
 						} else {
-							tags[i]--;
+							tags[i]--; // Query Repeat
 						}
 						
 						if(tags[i] == 0) {
