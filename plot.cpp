@@ -100,8 +100,9 @@ set<Estimator*> get_estimators() {
 	set<Estimator*> estimators;
 
 	estimators.insert(new LowerBound());
-	estimators.insert(new Schoute());
 	estimators.insert(new EomLee());
+	estimators.insert(new Schoute());
+	estimators.insert(new Q());
 	
 	return estimators;
 }
@@ -142,10 +143,12 @@ bool handle_parameters(int argc, char* argv[]) {
 					
 						if(value == "lower-bound") {
 							whitelisted.insert(new LowerBound());
-						} else if(value == "schoute") {
-							whitelisted.insert(new Schoute());
 						} else if(value == "eom-lee") {
 							whitelisted.insert(new EomLee());
+						} else if(value == "schoute") {
+							whitelisted.insert(new Schoute());
+						} else if(value == "q") {
+							whitelisted.insert(new Q());
 						} else {
 							cerr << "Unknown estimator: " << value << "." << endl;
 							return false;

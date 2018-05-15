@@ -33,31 +33,66 @@ class Estimator {
 		string plot_options;
 	public:
 		Estimator(string name, string file_name, string plot_options);
-		void simulate(const EstimationParameters &parameters) const;
-		void write_dat_file(EstimationResult result) const;
-		
-		int calculate(int idle, int success, int collision) const;
-		virtual int calculate_frame_size(int idle, int success, int collision) const = 0;
 		
 		string get_name() const;
 		string get_file_name() const;
 		string get_plot_options() const;
+		
+		virtual int calculate_frame_size(int idle, int success, int collision) const = 0;
+		virtual void simulate(const EstimationParameters &parameters) const = 0;
+		
+		void write_dat_file(EstimationResult result) const;
 };
 
-class LowerBound : public Estimator {
+class SimpleEstimator : public Estimator {
+	public:
+		SimpleEstimator(string name, string file_name, string plot_options);
+		
+		void simulate(const EstimationParameters &parameters) const;
+};
+
+class ExtendedEstimator : public Estimator {
+	public:
+		ExtendedEstimator(string name, string file_name, string plot_options);
+};
+
+class LowerBound : public SimpleEstimator {
 	public:
 		LowerBound();
 		int calculate_frame_size(int idle, int success, int collision) const;
 };
 
-class Schoute : public Estimator {
+class Schoute : public SimpleEstimator {
 	public:
 		Schoute();
 		int calculate_frame_size(int idle, int success, int collision) const;
 };
 
-class EomLee : public Estimator {
+class EomLee : public SimpleEstimator {
+	private:
+		double threshold;
 	public:
 		EomLee();
+		
+		double get_threshold() const;
+		
 		int calculate_frame_size(int idle, int success, int collision) const;
+};
+
+class Q : public ExtendedEstimator {
+	private:
+		int q;
+		double c;
+		
+		double current_q;
+	public:
+		Q();
+		
+		int get_q() const;
+		double get_c() const;
+
+		int calculate_frame_size(int idle, int success, int collision) const {
+			return 0;
+		}
+		void simulate(const EstimationParameters &parameters) const;
 };
