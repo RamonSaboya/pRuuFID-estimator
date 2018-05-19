@@ -21,6 +21,7 @@ struct EstimationResult {
 	int *empty_slots;
 	int *success_slots;
 	int *collision_slots;
+	int *estimation_times;
 	int *simulation_times;
 
 	EstimationResult(int tag_count, int simulations);
@@ -28,11 +29,15 @@ struct EstimationResult {
 
 class Estimator {
 	private:
+		string type;
+		
 		string name;
 		string file_name;
 		string plot_options;
 	public:
-		Estimator(string name, string file_name, string plot_options);
+		Estimator(string type, string name, string file_name, string plot_options);
+		
+		string get_type() const;
 		
 		string get_name() const;
 		string get_file_name() const;

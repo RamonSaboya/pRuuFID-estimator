@@ -39,13 +39,20 @@ EstimationResult::EstimationResult(int tag_count, int simulations) {
 	this->empty_slots = new int[tag_count]();
 	this->success_slots = new int[tag_count]();
 	this->collision_slots = new int[tag_count]();
+	this->estimation_times = new int[tag_count]();
 	this->simulation_times = new int[tag_count]();
 }
 
-Estimator::Estimator(string name, string file_name, string plot_options) {
+Estimator::Estimator(string type, string name, string file_name, string plot_options) {
+	this->type = type;
+	
 	this->name = name;
 	this->file_name = file_name;
 	this->plot_options = plot_options;
+}
+
+string Estimator::get_type() const {
+	return type;
 }
 
 string Estimator::get_name() const {
@@ -68,7 +75,15 @@ void Estimator::write_dat_file(EstimationResult result) const {
 	datFile << "# " << setw(3 * W - 2) << this->get_name() << endl;
 	datFile << "#" << endl;
 	datFile << "#" << endl;
-	datFile << "# " << setw(W - 2) << "tags" << setw(W) << "error" << setw(W) << "slots" << setw(W) << "time" << setw(W) << "efficiency" << setw(W) << "empty" << setw(W) << "collision" << endl;
+	datFile << "# " << setw(W - 2) << "tags";
+	datFile << setw(W) << "slots";
+	datFile << setw(W) << "empty";
+	datFile << setw(W) << "collision";
+	datFile << setw(W) << "efficiency";
+	datFile << setw(W) << "error";
+	datFile << setw(W) << "simul_time";
+	datFile << setw(W) << "estim_time";
+	datFile << endl;
 	datFile << "#" << endl;
 	
 	double simulations = result.simulations;
@@ -80,26 +95,28 @@ void Estimator::write_dat_file(EstimationResult result) const {
 		double empty = result.empty_slots[i] / simulations;
 		double success = result.success_slots[i] / simulations;
 		double collision = result.collision_slots[i] / simulations;
-		double simulation_times = result.simulation_times[i] / 1e6;
+		double estimation_times = result.estimation_times[i] / simulations / 1e3;
+		double simulation_times = result.simulation_times[i] / simulations / 1e3;
 		
 		double total_slots = empty + success + collision;
 		
 		double efficiency = success / total_slots;
 
 		datFile << setw(W) << fixed << tags;
-		datFile << setw(W) << fixed << errors;
 		datFile << setw(W) << fixed << total_slots;
-		datFile << setw(W) << fixed << simulation_times;
-		datFile << setw(W) << fixed << efficiency;
 		datFile << setw(W) << fixed << empty;
 		datFile << setw(W) << fixed << collision;
+		datFile << setw(W) << fixed << efficiency;
+		datFile << setw(W) << fixed << errors;
+		datFile << setw(W) << fixed << simulation_times;
+		datFile << setw(W) << fixed << estimation_times;
 		datFile << endl;
 	}
 
 	datFile.close();
 }
 
-SimpleEstimator::SimpleEstimator(string name, string file_name, string plot_options) : Estimator(name, file_name, plot_options) {}
+SimpleEstimator::SimpleEstimator(string name, string file_name, string plot_options) : Estimator("SIMPLE", name, file_name, plot_options) {}
 
 void SimpleEstimator::simulate(const EstimationParameters &parameters) const {
 	// Amount of tag counts
@@ -110,13 +127,14 @@ void SimpleEstimator::simulate(const EstimationParameters &parameters) const {
 	int tag_count, simulations, frame_count, frame_size;
 	int error, slot, idle, success, collision;
 	int *frame; // Holds -1 for collision, 0 when empty or 1 otherwise
-	high_resolution_clock::time_point start_time, end_time;
+	high_resolution_clock::time_point start_estimation, end_estimation;
+	high_resolution_clock::time_point start_simulation, end_simulation;
 
 	for(int idx = 0; idx < n; ++idx) {
 		tag_count = parameters.starting_tags + (parameters.increase_value * idx);
 		result.tag_amounts[idx] = tag_count;
 		
-		start_time = high_resolution_clock::now();
+		start_simulation = high_resolution_clock::now();
 		
 		simulations = parameters.simulations;
 		while(simulations--) {
@@ -151,8 +169,14 @@ void SimpleEstimator::simulate(const EstimationParameters &parameters) const {
 				result.empty_slots[idx] += idle;
 				result.success_slots[idx] += success;
 				result.collision_slots[idx] += collision;
+		
+				start_estimation = high_resolution_clock::now();
 			
 				frame_size = calculate_frame_size(idle, success, collision);
+		
+				end_estimation = high_resolution_clock::now();
+
+				result.estimation_times[idx] += duration_cast<nanoseconds>(end_estimation - start_estimation).count();
 				
 				tag_count -= success;
 				
@@ -164,15 +188,15 @@ void SimpleEstimator::simulate(const EstimationParameters &parameters) const {
 			tag_count = parameters.starting_tags + (parameters.increase_value * idx);
 		}
 		
-		end_time = high_resolution_clock::now();
+		end_simulation = high_resolution_clock::now();
 	
-		result.simulation_times[idx] = duration_cast<microseconds>(end_time - start_time).count();
+		result.simulation_times[idx] = duration_cast<microseconds>(end_simulation - start_simulation).count();
 	}
 
 	write_dat_file(result);
 }
 
-ExtendedEstimator::ExtendedEstimator(string name, string file_name, string plot_options) : Estimator(name, file_name, plot_options) {}
+ExtendedEstimator::ExtendedEstimator(string name, string file_name, string plot_options) : Estimator("EXTENDED", name, file_name, plot_options) {}
 
 LowerBound::LowerBound() : SimpleEstimator("lower-bound", "lower_bound.dat", "w lp lw 1.75 pt 1 ps 2.75 lt -1 t 'Lower Bound'") {}
 int LowerBound::calculate_frame_size(int idle, int success, int collision) const {

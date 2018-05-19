@@ -28,7 +28,7 @@ Gnuplot g;
 set<Estimator*> get_estimators();
 bool handle_parameters(int argc, char* argv[]);
 bool validate_parameters();
-void plot_graph(int idx);
+void plot_graph(int idx, bool simple_only = false);
 
 int main(int argc, char* argv[]) {
 	whitelisted = get_estimators();
@@ -52,38 +52,45 @@ int main(int argc, char* argv[]) {
 	
 	cout << "Execution time in ms: " << duration_cast<milliseconds>(end_time - start_time).count() << endl;
 
-	g.cmd("set terminal pngcairo size 1700,900");
+	g.cmd("set terminal pngcairo size 1700,1400");
 	g.cmd("set output 'graph.png'");
 	g.cmd("set multiplot");
 	g.cmd("set key left top");
-	g.cmd("set size 0.3,0.45");
+	g.cmd("set size 0.3,0.3");
 	g.cmd("set style line 10 lc rgb 'black' lt 1 lw 1.35");
-	g.cmd("set grid xtics ytics mxtics mytics ls 10 dt 3");
+	g.cmd("set grid xtics ytics mxtics mytics ls 10 dt 1");
 	g.cmd("set mytics 1");
 	g.cmd("set mxtics 1");
 	g.cmd("set xr [*:*]");
 	g.cmd("set yr [0:*]");
 	g.cmd("set xlabel 'Número de Etiquetas' font 'Helvetica,20'");
-	g.cmd("set ylabel 'Erro Abs. Médio de Estimação' font 'Helvetica,20'");
-	g.cmd("set origin 0.0,0.55");
+	g.cmd("set ylabel 'Número de Slots' font 'Helvetica,20'");
+	g.cmd("set origin 0.0,0.7");
 	plot_graph(2);
-	g.cmd("set ylabel 'Número de Slots'");
-	g.cmd("set origin 0.35,0.55");
+	g.cmd("set ylabel 'Número de Slots Vazios'");
+	g.cmd("set origin 0.35,0.7");
 	plot_graph(3);
-	g.cmd("set ylabel 'Tempo para Identificação (s)'");
-	g.cmd("set origin 0.7,0.55");
+	g.cmd("set ylabel 'Número de Slots em Colisão'");
+	g.cmd("set origin 0.7,0.7");
 	plot_graph(4);
 	g.cmd("set ylabel 'Eficiência'");
-	g.cmd("set origin 0.0,0.025");
+	g.cmd("set origin 0.13,0.37");
 	g.cmd("set key left bottom");
 	plot_graph(5);
-	g.cmd("set ylabel 'Número de Slots Vazios'");
-	g.cmd("set origin 0.35,0.025");
 	g.cmd("set key left top");
+	g.cmd("set ylabel 'Erro Abs. Médio de Estimação'");
+	g.cmd("set origin 0.56,0.37");
 	plot_graph(6);
-	g.cmd("set ylabel 'Número de Slots em Colisão'");
-	g.cmd("set origin 0.7,0.025");
+	g.cmd("set ylabel 'Tempo para Identificação (ms)'");
+	g.cmd("set origin 0.13,0.025");
+	g.cmd("set yr [*:*]");
+	g.cmd("set logscale y");
 	plot_graph(7);
+	g.cmd("set ylabel 'Tempo para Estimação (µs)'");
+	g.cmd("set origin 0.56,0.025");
+	plot_graph(8, true);
+	g.cmd("unset log");
+	g.cmd("set yr [0:*]");
 	g.cmd("unset multiplot");
 	
 	usleep(1000000);
@@ -91,11 +98,13 @@ int main(int argc, char* argv[]) {
 	system("eog --disable-gallery --single-window graph.png &");
 }
 
-void plot_graph(int idx) {
+void plot_graph(int idx, bool simple_only) {
 	string plot = "plot ";
 	
 	for(Estimator* estimator : whitelisted) {
-		plot += "'" + estimator->get_file_name() + "' u 1:" + to_string(idx) + " " + estimator->get_plot_options() + ", ";
+		if(!simple_only || estimator->get_type() == "SIMPLE") {
+			plot += "'" + estimator->get_file_name() + "' u 1:" + to_string(idx) + " " + estimator->get_plot_options() + ", ";
+		}
 	}
 	
 	g.cmd(plot.substr(0, plot.size() - 1));
