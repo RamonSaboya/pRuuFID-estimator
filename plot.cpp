@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 	g.cmd("set multiplot");
 	g.cmd("set key left top");
 	g.cmd("set size 0.3,0.3");
-	g.cmd("set style line 10 lc rgb 'black' lt 1 lw 1.35");
+	g.cmd("set style line 10 lc rgb 'black' lt 1 lw 0.75");
 	g.cmd("set grid xtics ytics mxtics mytics ls 10 dt 1");
 	g.cmd("set mytics 1");
 	g.cmd("set mxtics 1");
